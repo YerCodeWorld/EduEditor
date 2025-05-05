@@ -3,9 +3,12 @@
 import React from "react";
 import ThemeSwitcher from "./ThemeSwitcher";
 import Logo from "../../assets/logo.svg";
-import GithubIcon from "../../assets/github.svg";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+
+/*
+For some reason this does not want me to do anything
+ */
 
 const Header = () => {
   const pathname = usePathname();
@@ -25,9 +28,6 @@ const Header = () => {
         </Link>
         <div className="flex gap-5">
           <ThemeSwitcher />
-          <Link href="https://github.com/ndtrung341/next-tiptap">
-            <GithubIcon />
-          </Link>
         </div>
       </div>
     </header>
