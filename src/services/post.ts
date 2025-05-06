@@ -1,6 +1,8 @@
 import { mock } from "@/sample";
 
 export const getPost = (): Promise<any> => {
+
+  // Needs to be replaced with actual logic from our API. Seems about easy enough.
   return new Promise<any>((resolve) => {
     setTimeout(() => {
       if (typeof window !== "undefined") {
@@ -18,6 +20,7 @@ export const getPost = (): Promise<any> => {
   });
 };
 
+// This is why it was always saving when even after deleting the whole project. Local storage already got me covered.
 export const savePost = (data: any) => {
   if (typeof window === "undefined") return;
 

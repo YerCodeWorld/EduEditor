@@ -26,7 +26,10 @@ export default function EditForm() {
   }, []);
 
   useEffect(() => {
+      // This thing is some sort of eventBus isn't it? Looks identical to the one applied for our user log logic
     const subscription = watch((values, { type }) => {
+
+        // Annd we upload the saved content everytime a single change is made. We could add a button to save.
       if (type === "change") {
         savePost({ ...values, wordCount: getWordCount() });
       }
@@ -38,9 +41,10 @@ export default function EditForm() {
   if (isLoading) return;
 
   return (
+
     <div className="flex flex-col gap-6">
       <div>
-        <label className="inline-block font-medium dark:text-white mb-2">Title</label>
+        <label className="inline-block font-medium dark:text-white mb-2">Your Amazing Title Here</label>
         <Controller
           control={control}
           name="title"
@@ -54,6 +58,8 @@ export default function EditForm() {
           )}
         />
       </div>
+
+        {/*Maybe add an option here to upload image? As well as other options the author of the article would like to set*/}
 
       <div>
         <label className="inline-block font-medium dark:text-white mb-2">Content</label>

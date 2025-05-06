@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useCallback, useEffect } from "react";
+import React, { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import clsx from "clsx";
+// import clsx from "clsx";
 import useToc from "@/hooks/useToc";
 
 const PostToc = () => {
@@ -39,7 +39,7 @@ const PostToc = () => {
             <li
               key={item.id}
               style={{
-                paddingLeft: `${(item.level - 2) * 1}rem`,
+                paddingLeft: `${(item.level - 2)}rem`,
               }}
             >
               <Link

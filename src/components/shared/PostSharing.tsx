@@ -1,6 +1,7 @@
 import React from "react";
 import { TbBrandFacebook, TbBrandLinkedin, TbBrandX } from "react-icons/tb";
 
+// These things must be replaced with actual logic for sharing the link
 const PostSharing = () => {
   return (
     <div className="flex justify-center lg:justify-end order-3 lg:order-1">

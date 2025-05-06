@@ -3,6 +3,7 @@ import { Extension } from "@codemirror/state";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags as t } from "@lezer/highlight";
 
+// I guess this is some sort of tailwind config class declaration thing?
 export const themeConfig = EditorView.theme({
   "&": {
     color: "inherit",
