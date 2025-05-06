@@ -20,3 +20,5 @@ A modern and feature-rich Rich Text Editor template, built with Next.js 14 and T
 - CodeMirror
 - TypeScript
 - SCSS + Tailwind CSS
+
+It would've been so good to add some documentation on all this...

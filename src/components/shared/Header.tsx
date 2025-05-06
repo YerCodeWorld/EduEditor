@@ -1,34 +1,23 @@
 "use client";
 
 import React from "react";
-import ThemeSwitcher from "./ThemeSwitcher";
-import Logo from "../../assets/logo.svg";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-
-/*
-For some reason this does not want me to do anything
- */
 
 const Header = () => {
   const pathname = usePathname();
   const isEditPage = pathname === "/";
 
+  // Make this thing differently, and please center that button, thanks.
   return (
     <header className="sticky z-50 top-0 px-6 border-b border-neutral-300 dark:border-neutral-700 bg-white/20 dark:bg-[#0d101820] backdrop-blur-lg">
-      <div className="h-16 max-w-screen-xl w-full mx-auto flex items-center justify-between gap-6">
-        <Link href="/">
-          <Logo width={100} />
-        </Link>
+      <div className="h-16 max-w-screen-xl w-full mx-auto flex items-center justify-between gap-0.5">
         <Link
           href={isEditPage ? "/post-csr" : "/"}
           className="px-4 py-2 text-sm font-medium rounded-lg border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
         >
-          {isEditPage ? "View Post" : "Edit Post"}
+          {isEditPage ? "Preview" : "Edit"}
         </Link>
-        <div className="flex gap-5">
-          <ThemeSwitcher />
-        </div>
       </div>
     </header>
   );

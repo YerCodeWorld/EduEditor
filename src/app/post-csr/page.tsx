@@ -8,8 +8,8 @@ import PostContent from "../../components/shared/PostContent";
 import PostSharing from "../../components/shared/PostSharing";
 import PostReadingProgress from "../../components/shared/PostReadingProgress";
 import TiptapRenderer from "@/components/TiptapRenderer/ClientRenderer";
-import Image from "next/image";
 
+// Content to display
 import { getPost } from "@/services/post";
 
 export default function PostPage() {
@@ -26,9 +26,13 @@ export default function PostPage() {
 
   if (!post) return null;
 
-  return (
+  return (  // #IDONTLIKETAILWIND
     <article className="py-10 px-6 flex flex-col items-center ">
+
+        {/*Our fancy progress line*/}
       <PostReadingProgress />
+
+        {/*TITLE*/}
       <PostHeader
         title={post.title}
         author={post.author}
@@ -36,14 +40,21 @@ export default function PostPage() {
         readingTime={readingTime}
         cover={post.cover}
       />
+
       <div className="grid grid-cols-1 w-full lg:w-auto lg:grid-cols-[minmax(auto,256px)_minmax(720px,1fr)_minmax(auto,256px)] gap-6 lg:gap-8">
+
+          {/*Social side bar*/}
         <PostSharing />
+
         <PostContent>
           <TiptapRenderer>{post.content}</TiptapRenderer>
         </PostContent>
+
+          {/*Table of contents*/}
         <PostToc />
       </div>
-      <Image src={"/doraemon.png"} width={350} height={350} alt="" className="mx-auto mt-20" />
+
+        {/*Removed original Doraemon image*/}
     </article>
   );
 }

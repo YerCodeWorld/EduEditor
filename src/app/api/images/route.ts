@@ -1,8 +1,14 @@
 import {v2 as cloudinary} from 'cloudinary';
 import {NextResponse} from 'next/server';
 
+/**
+ * Make the corresponding API calls to CLOUDINARY. Only Get and Post methods are necessary.
+ * Still getting used to NextJS and its SSR capabilities.
+ */
+
 export const dynamic = 'force-dynamic';
 
+// ENV variables for API
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -27,6 +33,7 @@ export async function GET() {
       height: item.height
     }));
 
+    // Pretty similar at how we are handling Next type in Vite with express I believe.
     return NextResponse.json(map);
   } catch (error) {
     console.error('Error fetching images:', error);
@@ -34,6 +41,9 @@ export async function GET() {
   }
 }
 
+// This is used when uploading an image from device, isn't it?
+// Currently giving issues in PROD probably due to ENV variables, or possibly not.
+// Yes it was ENV variables people.Forgot to create the file again
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
