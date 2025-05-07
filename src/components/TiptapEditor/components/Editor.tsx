@@ -4,6 +4,7 @@ import React, { forwardRef, useCallback, useEffect } from "react";
 import { Content, type Editor } from "@tiptap/react";
 
 import TiptapProvider from "./Provider";
+
 import { type UseTiptapEditorOptions } from "../hooks/useTiptapEditor";
 
 import MenuBar from "./MenuBar";

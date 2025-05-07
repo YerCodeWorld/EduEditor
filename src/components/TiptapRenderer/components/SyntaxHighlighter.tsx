@@ -1,6 +1,8 @@
 "use client";
 
 import { useLayoutEffect, useState } from "react";
+
+// ...
 import { highlight } from "../utils/highlight";
 
 interface SyntaxHighlighterProps {

@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
+import { usePathname } from "next/navigation";
 import TiptapEditor, { type TiptapEditorRef } from "@/components/TiptapEditor";
+
 import { getPost, savePost } from "@/services/post";
+import Link from "next/link";
 
 interface PostForm {
   title: string;
@@ -9,7 +12,10 @@ interface PostForm {
 }
 
 export default function EditForm() {
+
   const editorRef = useRef<TiptapEditorRef>(null);
+  const pathname = usePathname();
+  const isEditPage = pathname === "/";
   const [isLoading, setIsLoading] = useState(true);
   const { control, reset, watch } = useForm<PostForm>();
 
@@ -43,7 +49,32 @@ export default function EditForm() {
   return (
 
     <div className="flex flex-col gap-6">
-      <div>
+
+        <div className={"flex flex-row gap-6"}>
+            <Link
+                href={isEditPage ? "/post-csr" : "/"}
+                title={"See what the end result looks like"}
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+            >
+                Preview Content
+            </Link>
+            <button
+                type={"submit"}
+                title={"Publish your post so that others can see it"}
+                onClick={() => {console.log("Yahir is the most beautiful person in the world. After Jesus.")}}
+                className={"px-4 py-2 text-sm font-medium rounded-lg border border-neutral-300  hover:bg-neutral-100"}
+            >Submit Post
+            </button>
+            <button
+                type={"submit"}
+                title={"Save this post into your draft list"}
+                className={"px-4 py-2 text-sm font-medium rounded-lg border border-neutral-300  hover:bg-neutral-100"}
+            >Save Progress
+            </button>
+        </div>
+
+
+        <div>
         <label className="inline-block font-medium dark:text-white mb-2">Your Amazing Title Here</label>
         <Controller
           control={control}
@@ -58,7 +89,6 @@ export default function EditForm() {
           )}
         />
       </div>
-
         {/*Maybe add an option here to upload image? As well as other options the author of the article would like to set*/}
 
       <div>

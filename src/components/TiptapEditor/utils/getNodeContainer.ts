@@ -1,4 +1,4 @@
-import { Editor } from "@tiptap/react";
+import {Editor} from "@tiptap/react";
 
 export const getNodeContainer = (editor: Editor, selector: string) => {
   const {
@@ -8,8 +8,7 @@ export const getNodeContainer = (editor: Editor, selector: string) => {
     },
   } = editor;
 
-  const node = (view.nodeDOM(from) || view.domAtPos(from).node) as HTMLElement;
-  let container: HTMLElement | null = node;
+  let container: HTMLElement | null = (view.nodeDOM(from) || view.domAtPos(from).node) as HTMLElement;
 
   while (container && container?.nodeName.toLocaleLowerCase() !== selector.toLocaleLowerCase()) {
     container = container.parentElement;

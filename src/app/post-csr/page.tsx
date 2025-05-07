@@ -7,6 +7,8 @@ import PostToc from "../../components/shared/PostToc";
 import PostContent from "../../components/shared/PostContent";
 import PostSharing from "../../components/shared/PostSharing";
 import PostReadingProgress from "../../components/shared/PostReadingProgress";
+
+
 import TiptapRenderer from "@/components/TiptapRenderer/ClientRenderer";
 
 // Content to display
@@ -27,7 +29,7 @@ export default function PostPage() {
   if (!post) return null;
 
   return (  // #IDONTLIKETAILWIND
-    <article className="py-10 px-6 flex flex-col items-center ">
+    <article className=" px-6 flex flex-col items-center ">
 
         {/*Our fancy progress line*/}
       <PostReadingProgress />
