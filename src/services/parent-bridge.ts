@@ -3,7 +3,8 @@
 const allowedOrigins = [
     'https://www.ieduguide.com',
     'https://ieduguide.com',
-    'http://localhost:5173'
+    'http://localhost:5173',
+    'https://edu-text-phi.vercel.app'
 ];
 
 export class ParentBridge {
@@ -17,10 +18,17 @@ export class ParentBridge {
     }
 
     private handleMessage = (event: MessageEvent) => {
-        if (!allowedOrigins.includes(event.origin)) return;
+        console.log('Received message from:', event.origin);
+        console.log('Message data:', event.data);
+
+        if (!allowedOrigins.includes(event.origin)) {
+            console.log('Origin not allowed:', event.origin);
+            return;
+        }
 
         // CRUD
         const [ type, payload ] = event.data;
+        console.log('Processing message type:', type);
 
         switch ( type ) {
             case 'USER_DATA':
