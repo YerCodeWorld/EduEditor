@@ -6,6 +6,8 @@ import TiptapEditor, { type TiptapEditorRef } from "@/components/TiptapEditor";
 import { getPost, savePost } from "@/services/post";
 import Link from "next/link";
 
+import { ConnectionTest } from "@/components/ConnectionTest";
+
 interface PostForm {
   title: string;
   content: string;
@@ -51,6 +53,9 @@ export default function EditForm() {
     <div className="flex flex-col gap-6">
 
         <div className={"flex flex-row gap-6"}>
+
+            <ConnectionTest />
+
             <Link
                 href={isEditPage ? "/post-csr" : "/"}
                 title={"See what the end result looks like"}
@@ -72,7 +77,6 @@ export default function EditForm() {
             >Save Progress
             </button>
         </div>
-
 
         <div>
         <label className="inline-block font-medium dark:text-white mb-2">Your Amazing Title Here</label>
