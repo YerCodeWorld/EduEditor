@@ -7,16 +7,19 @@ export function ConnectionTest() {
     const [userData, setUserData] = useState<any>(null);
 
     useEffect(() => {
+
         parentBridge.on('userData', (data) => {
             setStatus('Connected!');
             setUserData(data);
         });
 
         // Send a test message to parent
-        window.parent.postMessage({
-            type: 'EDITOR_READY',
-            payload: { message: 'Editor is ready' }
-        }, '*');
+        if (typeof window !== "undefined") {
+            window.parent.postMessage({
+                type: 'EDITOR_READY',
+                payload: { message: 'Editor is ready' }
+            }, '*');
+        }
     }, []);
 
     return (

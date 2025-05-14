@@ -11,7 +11,9 @@ export class ParentBridge {
     private callbacks: Map<string, (data: any) => void> = new Map();
 
     constructor() {
-        window.addEventListener('message', this.handleMessage);
+        if (typeof window !== 'undefined') {
+            window.addEventListener('message', this.handleMessage);
+        }
     }
 
     private handleMessage = (event: MessageEvent) => {
@@ -41,4 +43,10 @@ export class ParentBridge {
     }
 }
 
-export const parentBridge = new ParentBridge();
+let parentBridge: ParentBridge;
+
+if (typeof window !== 'undefined') {
+    parentBridge = new ParentBridge();
+}
+
+export { parentBridge };
