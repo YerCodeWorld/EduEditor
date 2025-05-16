@@ -1,16 +1,16 @@
-export const title = "Tiptap with React and Next.js: Building a Powerful Rich Text Editor";
+export const title = "EduGuiders: An initial ride";
 
 const content = `
-<h2>Introduction</h2>
+<h2>POST NOT FOUND</h2>
 
 <p>
-  In web development, creating feature-rich text editors has always been challenging. Tiptap, a headless editor framework, combined with React and Next.js, opens up possibilities for sophisticated content management systems and collaborative editing tools.
+  This is just a placeholder text that displays when the requested post is either not found or failed to load. This can happen for several reasons, among the main ones errors from the code (the developer), or truly just a fetching/networking error.
 </p>
 
-<h3>What is Tiptap?</h3>
+<h3>What is EduGuiders?</h3>
 
 <p>
-  Tiptap is built on ProseMirror, providing a modular architecture and headless functionality. This approach gives developers full control over the UI while offering powerful editing capabilities.
+  EduGuiders is a platform created with no mere objectives than helping others and creating a recreational center for people from all interests. It aims to achieve a unified platform that allows everybody to build and use their desired resources with ease.
 </p>
 
 <figure>
@@ -20,23 +20,24 @@ const content = `
       data-width="1200"
       data-height="800"
    />
-   <figcaption>Tiptap: A powerful combination of technologies</figcaption>
+   <figcaption>EduGuiders: A powerful combination of resources</figcaption>
 </figure>
 
 <h3>Key Features</h3>
 
 <ul>
-  <li>Extensible architecture with various extensions</li>
-  <li>Collaborative editing support</li>
-  <li>TypeScript support</li>
-  <li>Framework-agnostic with excellent React support</li>
+  <li>Ability to contact all-stars teachers</li>
+  <li>Create and use exercises with just some clicks</li>
+  <li>Play games with your learning partners and friends</li>
+  <li>Read top-notch learning strategies</li>
+  <li>Get all sort of services, from conversation to exams</li>
 </ul>
 
 <h2>Getting Started</h2>
 
-<h3>Installation</h3>
-<p>To integrate Tiptap into a Next.js project, install the necessary dependencies:</p>
-<pre><code class="language-bash">npm install @tiptap/react @tiptap/pm @tiptap/starter-kit</code></pre>
+<h3>Usage</h3>
+<p>The interface is made the most intuitive way possible, but if you are lost, just look on the menus:</p>
+<pre><code class="language-bash">menu header (computers) and homepage tiles</code></pre>
 
 <h3>Basic Setup</h3>
 <p>Create a basic Tiptap editor component:</p>
@@ -258,6 +259,6 @@ export const mock = {
   content,
   wordCount: 483,
   cover: "https://res.cloudinary.com/dmhzdv5kf/image/upload/v1733364957/shk91N6yUj_zkms92.jpg",
-  author: "ChatGPT",
+  author: "Yahir Adolfo",
   createdAt: "Jan, 02 2025",
 };

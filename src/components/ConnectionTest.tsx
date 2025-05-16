@@ -7,19 +7,23 @@ export function ConnectionTest() {
     const [userData, setUserData] = useState<any>(null);
 
     useEffect(() => {
+        console.log('Setting up userData listener first...');
 
         parentBridge.on('userData', (data) => {
+            console.log('userData callback triggered!', data);
             setStatus('Connected!');
             setUserData(data);
+
         });
 
-        // Send a test message to parent
-        if (typeof window !== "undefined") {
+        // Tell parent we're ready to receive messages
+        if (typeof window !== 'undefined') {
             window.parent.postMessage({
                 type: 'EDITOR_READY',
                 payload: { message: 'Editor is ready' }
             }, '*');
         }
+
     }, []);
 
     return (
@@ -30,6 +34,7 @@ export function ConnectionTest() {
                     <p>User: {userData.user?.name}</p>
                     <p>Email: {userData.user?.email}</p>
                     <p>Authenticated: {userData.isAuthenticated ? 'Yes' : 'No'}</p>
+                    <p>Post?: {userData.post !== null ? 'Yes' : 'No'}</p>
                 </div>
             )}
         </div>

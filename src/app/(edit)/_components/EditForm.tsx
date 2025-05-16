@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import TiptapEditor, { type TiptapEditorRef } from "@/components/TiptapEditor";
 
 import { getPost, savePost } from "@/services/post";
+// import { EditorApi } from "@/services/api";
 import Link from "next/link";
 
 import { ConnectionTest } from "@/components/ConnectionTest";

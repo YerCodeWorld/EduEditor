@@ -27,23 +27,30 @@ export class ParentBridge {
         }
 
         // CRUD
-        const [ type, payload ] = event.data;
+        const { type, payload } = event.data;
         console.log('Processing message type:', type);
 
-        switch ( type ) {
+        switch (type) {
+            case 'INIT_DATA':
+                console.log('Received INIT_DATA:', payload);
+                this.userData = payload;
+                this.callbacks.get('initData')?.(payload);
+                break;
             case 'USER_DATA':
                 this.userData = payload;
                 this.callbacks.get('userData')?.(payload);
                 break;
-
-                case 'PREFERENCE_UPDATE':
-                    this.callbacks.get('preferences')?.(payload);
-                    break;
+            case 'PREFERENCE_UPDATE':
+                this.callbacks.get('preferences')?.(payload);
+                break;
         }
+
     };
 
     on(event: string, callback: (data: any) => void) {
-        this.callbacks.set(event, callback)
+        console.log(`Setting callback for event: ${event}`);
+        this.callbacks.set(event, callback);
+        console.log('Current callbacks:', this.callbacks);
     }
 
     getUserData() {
