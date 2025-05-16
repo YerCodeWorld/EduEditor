@@ -12,7 +12,7 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
 
     useEffect(() => {
         // Listen for user data from parent
-        parentBridge.on('userData', (data) => {
+        parentBridge.on('userData', (data: any) => {
             setIsAuthenticated(data.isAuthenticated);
             setIsLoading(false);
 
@@ -37,7 +37,7 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
         });
 
         // Listen for preference updates
-        parentBridge.on('preferences', (data) => {
+        parentBridge.on('preferences', (data: any) => {
             // Update color theme dynamically
             if (data.preferredColor) {
                 // Update CSS variables
