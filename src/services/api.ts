@@ -2,27 +2,36 @@ import { parentBridge } from "@/services/parent-bridge";
 
 class EditorApi {
     // use env variables nigga
-    private baseUrl = 'https://api.ieduguide.com/api';
+    private baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.ieduguide.com/api';
 
     private async getHeaders() {
         const userData = parentBridge.getUserData();
+        const token = userData?.token || '';
+
         return {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${userData?.token}`
+            'Authorization': token ? `Bearer ${token}` : ''
         };
     }
 
     async loadPostBySlug(postSlug: string) {
         try {
+            const userData = parentBridge.getUserData();
+            if (userData?.post?.slug === postSlug) {
+                return { data: userData.post };
+            }
+
             const response = await fetch(`${this.baseUrl}/posts/slug/${postSlug}`, {
                 headers: await this.getHeaders()
             });
 
             if (!response.ok) {
-                console.error('Failed to fetch post');
+                console.error(`HTTP error ${response.status}: ${response.statusText}`);
+                return;
             }
 
             const data = await response.json();
+            console.log('Fetched post data:', data);
             return data;
 
         } catch (error) {
@@ -31,41 +40,60 @@ class EditorApi {
         }
     }
 
-    // Could add loading by author (email) method
-
-    async savePosts(postData: any) {
+    async savePost(postData: any) {
         try {
             const userData = parentBridge.getUserData();
-            const slug = postData.title.toLowerCase()  // I will never understand this regex witchery
+            if (!userData?.user?.email) {
+                console.error('User is not authenticated');
+                return;
+            }
+
+            const slug = postData.title.toLowerCase()
                 .replace(/[^\w\s-]/g, '')
                 .replace(/\s+/g, '-');
 
-            const payload = {  // Make sure the useData is actually sending this in the implementation
+            const payload = {
                 title: postData.title,
                 slug: slug,
                 summary: postData.summary || postData.title,
-                content: postData.content, // HTML string from TipTap
+                content: postData.content,
                 coverImage: postData.coverImage || null,
-                featured: false,
+                featured: postData.featured || false,
                 published: postData.published || false,
                 authorEmail: userData.user.email
-            }
+            };
 
-            const response = await fetch(`${this.baseUrl}/posts`, {  // what up with this route? donesnt seem right
-                method: 'POST',
+            console.log('Saving post data:', payload);
+
+            // Also notify parent app
+            parentBridge.sendToParent('SAVE_CONTENT', payload);
+
+            const isUpdate = postData.id || (userData.post?.id);
+            const url = isUpdate
+                ? `${this.baseUrl}/posts/${isUpdate}`
+                : `${this.baseUrl}/posts`;
+
+            const method = isUpdate ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
                 headers: await this.getHeaders(),
                 body: JSON.stringify(payload)
             });
 
-            if (!response.ok) console.error('Failed to save posts');
+            if (!response.ok) {
+                throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+            }
+
             const data = await response.json();
+            console.log('Save response:', data);
             return data;
 
         } catch (error) {
             console.error('Error saving post:', error);
+            throw error;
         }
     }
-
 
     async updatePost(slug: string, postData: any) {
         try {
@@ -76,12 +104,17 @@ class EditorApi {
             const payload = {
                 title: postData.title,
                 slug: updatedSlug,
-                summary: postData.summary,
-                content: postData.content, // HTML string
-                coverImage: postData.coverImage,
-                published: postData.published,
+                summary: postData.summary || postData.title,
+                content: postData.content,
+                coverImage: postData.coverImage || null,
+                published: postData.published || false,
                 featured: postData.featured || false
             };
+
+            console.log(`Updating post with slug: ${slug}`, payload);
+
+            // Notify parent app
+            parentBridge.sendToParent('CONTENT_UPDATE', payload);
 
             const response = await fetch(`${this.baseUrl}/posts/slug/${slug}`, {
                 method: 'PUT',
@@ -90,17 +123,18 @@ class EditorApi {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to update post');
+                throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
             }
 
             const data = await response.json();
+            console.log('Update response:', data);
             return data;
         } catch (error) {
             console.error('Error updating post:', error);
             throw error;
         }
     }
-    // getPosts?
+
 }
 
 export const editorAPI = new EditorApi();

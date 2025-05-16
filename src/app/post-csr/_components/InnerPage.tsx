@@ -1,32 +1,30 @@
 "use client";
 
-import { Suspense } from "react";
 import { useState, useEffect, useMemo } from "react";
-
-import PostHeader from "../../../components/shared/PostHeader";
-import PostToc from "../../../components/shared/PostToc";
-import PostContent from "../../../components/shared/PostContent";
-import PostSharing from "../../../components/shared/PostSharing";
-import PostReadingProgress from "../../../components/shared/PostReadingProgress";
-
 import { useSearchParams } from "next/navigation";
-import { parentBridge } from "@/services/parent-bridge";
-import { editorAPI } from "@/services/api";
 
+import PostHeader from "@/components/shared/PostHeader";
+import PostToc from "@/components/shared/PostToc";
+import PostContent from "@/components/shared/PostContent";
+import PostSharing from "@/components/shared/PostSharing";
+import PostReadingProgress from "@/components/shared/PostReadingProgress";
 import TiptapRenderer from "@/components/TiptapRenderer/ClientRenderer";
 
-import { getPost } from "@/services/post";  // example, do use database instead
+import { parentBridge } from "@/services/parent-bridge";
+import { editorAPI } from "@/services/api";
+import { getPost } from "@/services/post";  // Fallback mock data
 
 export default function PostPage() {
 
     const [post, setPost] = useState<any>(null);
-    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
+
     const searchParams = useSearchParams();
     const slug = searchParams.get('slug');
 
     const readingTime = useMemo(() => {
         if (!post?.content) return 0;
-
         // Simple word count from HTML content
         const text = post.content.replace(/<[^>]*>/g, '');
         const wordCount = text.split(/\s+/).length;
@@ -34,88 +32,113 @@ export default function PostPage() {
     }, [post]);
 
     useEffect(() => {
-        // Listen for post data from parent
-        parentBridge.on('initData', (data) => {
-            if (data.post) {
-                setPost(data.post);
+        async function loadContent() {
+            try {
+                setIsLoading(true);
+
+                // First check for post data from parent iframe communication
+                const handleInitData = (data: any) => {
+                    if (data?.post) {
+                        console.log('Setting post from parent data', data.post);
+                        setPost(data.post);
+                        setIsLoading(false);
+                    } else if (slug) {
+                        // If no post in parent data but we have slug, fetch it from API
+                        loadPostBySlug(slug);
+                    } else {
+                        const post = 'POST NOT FOUND';
+                        setPost(post);
+                        setIsLoading(false);
+                    }
+                };
+
+                // Register listener for parent data
+                const unsubscribe = parentBridge.on('initData', handleInitData);
+
+                // If we already have a slug in the URL, try loading the post
+                if (slug) {
+                    await loadPostBySlug(slug);
+                }
+
+                // Signal to parent we're ready to receive data
+                window.parent.postMessage({
+                    type: 'VIEWER_READY',
+                    payload: { slug }
+                }, '*');
+
+                return () => {
+                    unsubscribe();
+                };
+            } catch (error) {
+                console.error('Error in loadContent:', error);
+                setError('Failed to load post content');
                 setIsLoading(false);
             }
-        });
-
-        // If we have a slug in URL, fetch the post
-        if (slug) {
-            loadPost(slug);
         }
 
-        // Signal we're ready
-        window.parent.postMessage({
-            type: 'VIEWER_READY',
-            payload: { message: 'Viewer is ready' }
-        }, '*');
-
-        if (post === null || post === undefined) {
-            getPost().then(setPost);
-        }
-
+        loadContent().then((message) => {console.log('Done')} );
     }, [slug]);
 
-    /**  We could use this as a fallback maybe?
-     *     useEffect(() => {
-     *     getPost().then(setPost);
-     *     }, []);
-     *
-     */
-
-    const loadPost = async (postSlug: string) => {
+    async function loadPostBySlug(postSlug: string) {
         try {
-            setIsLoading(true);
             const response = await editorAPI.loadPostBySlug(postSlug);
-            setPost(response.data);
-        } catch (error) {
-            console.error('Failed to load post:', error);
+            if (response.data) {
+                setPost(response.data);
+            } else {
+                setError('Post not found');
+            }
+        } catch (err) {
+            setError('Failed to load post');
         } finally {
             setIsLoading(false);
         }
-    };
+    }
 
-    if (isLoading) {  // Please create a loading page in this app also
-        return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
+    if (isLoading) {
+        return (
+            <div className="flex justify-center items-center min-h-screen">
+                <div className="animate-pulse text-xl">Loading post content...</div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex justify-center items-center min-h-screen">
+                <div className="text-red-500 text-xl">{error}</div>
+            </div>
+        );
     }
 
     if (!post) {
-        return <div className="flex justify-center items-center min-h-screen">Post Not Found</div>;
+        return (
+            <div className="flex justify-center items-center min-h-screen">
+                <div className="text-xl">Post Not Found</div>
+            </div>
+        );
     }
 
-    return (  // #IDONTLIKETAILWIND
-
-        <article className=" px-6 flex flex-col items-center ">
-
-            {/*Our fancy progress line*/}
+    return (
+        <article className="px-6 flex flex-col items-center">
             <PostReadingProgress />
 
-            {/*TITLE*/}
             <PostHeader
                 title={post.title}
-                author={post.user?.name || post.authorEmail}
-                createdAt={post.createdAt}
+                author={post.user?.name || post.authorEmail || 'Unknown Author'}
+                createdAt={post.createdAt || new Date().toISOString()}
                 readingTime={readingTime}
-                cover={post.coverImage}
+                cover={post.coverImage || 'https://res.cloudinary.com/dmhzdv5kf/image/upload/v1733364957/shk91N6yUj_zkms92.jpg'}
             />
 
             <div className="grid grid-cols-1 w-full lg:w-auto lg:grid-cols-[minmax(auto,256px)_minmax(720px,1fr)_minmax(auto,256px)] gap-6 lg:gap-8">
-
-                {/*Social side bar*/}
                 <PostSharing />
 
                 <PostContent>
                     <TiptapRenderer>{post.content}</TiptapRenderer>
                 </PostContent>
 
-                {/*Table of contents*/}
                 <PostToc />
             </div>
-
-            {/*Removed original Doraemon image*/}
         </article>
     );
 }
