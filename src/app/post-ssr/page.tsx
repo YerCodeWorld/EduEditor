@@ -20,7 +20,7 @@ export default async function PostPage() {
     <article className="py-10 px-6 flex flex-col items-center ">
 
         {/*Our fancy progress line*/}
-      <PostReadingProgress />
+      <PostReadingProgress color={'#A47BB9'}/>
 
         {/*TITLE*/}
       <PostHeader

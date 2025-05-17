@@ -1,27 +1,12 @@
-// Communication bridge with parent application (EduPlatform)
+// src/services/parent-bridge.ts - Add height reporting functionality
 
-// Define allowed parent origins (enhance security)
-const ALLOWED_ORIGINS = [
-    'https://www.ieduguide.com',
-    'https://ieduguide.com',
-    'https://eduguiders.com',
-    'https://www.eduguiders.com',
-    'http://localhost:5173',  // Local dev
-    'http://127.0.0.1:5173'   // Also local dev
-];
-
-// Message types for type safety
-export type MessageType =
-    'INIT_DATA' |
-    'USER_DATA' |
-    'PREFERENCE_UPDATE' |
-    'CONTENT_UPDATE' |
-    'SAVE_CONTENT';
-
+// Modified ParentBridge class with height reporting
 export class ParentBridge {
     private userData: any = null;
     private callbacks: Map<string, Set<(data: any) => void>> = new Map();
     private isReady = false;
+    private resizeObserver: ResizeObserver | null = null;
+    private contentElement: HTMLElement | null = null;
 
     constructor() {
         this.setupMessageListener();
@@ -35,19 +20,16 @@ export class ParentBridge {
     }
 
     private handleMessage = (event: MessageEvent) => {
-        console.log('Child received message from:', event.origin);
-
         // Security check - only accept messages from allowed origins
-        if (!ALLOWED_ORIGINS.includes(event.origin)) {
+        if (!this.isOriginAllowed(event.origin)) {
             console.warn('Origin not allowed:', event.origin);
             return;
         }
 
-        // Extract message data
         const { type, payload } = event.data || {};
         if (!type) return;
 
-        console.log('Processing message type:', type, payload);
+        console.log('Child received message:', type);
 
         // Process different message types
         switch (type) {
@@ -57,22 +39,39 @@ export class ParentBridge {
                 this.notifyCallbacks('userData', payload.user);
                 break;
 
-            case 'PREFERENCE_UPDATE':
-                this.notifyCallbacks('preferences', payload);
+                // Preference update handling removed to simplify integration
                 break;
 
             case 'CONTENT_UPDATE':
                 this.notifyCallbacks('contentUpdate', payload);
                 break;
+
+            case 'REQUEST_CONTENT_HEIGHT':
+                this.reportContentHeight();
+                break;
         }
     };
+
+    private isOriginAllowed(origin: string): boolean {
+        // Define allowed parent origins
+        const ALLOWED_ORIGINS = [
+            'https://www.ieduguide.com',
+            'https://ieduguide.com',
+            'https://eduguiders.com',
+            'https://www.eduguiders.com',
+            'http://localhost:5173',  // Local dev
+            'http://127.0.0.1:5173'   // Also local dev
+        ];
+
+        return ALLOWED_ORIGINS.includes(origin);
+    }
 
     private sendReadyMessage() {
         if (typeof window !== 'undefined' && window.parent !== window) {
             // Determine if we're in edit mode or view mode based on URL
             const url = new URL(window.location.href);
             const isViewMode = window.location.pathname.includes('post-csr');
-            const editorMode = url.searchParams.get('mode') || 'new'; // Can be 'edit', 'new', etc.
+            const editorMode = url.searchParams.get('mode') || 'new';
 
             const readyMessage = {
                 type: isViewMode ? 'VIEWER_READY' : 'EDITOR_READY',
@@ -81,8 +80,6 @@ export class ParentBridge {
                     mode: isViewMode ? 'view' : editorMode
                 }
             };
-
-            console.log('Sending ready message to parent:', readyMessage);
 
             // Function to send the ready message
             const sendMessage = () => {
@@ -105,9 +102,48 @@ export class ParentBridge {
         }
     }
 
-    on(event: string, callback: (data: any) => void) {
-        console.log(`Registering callback for event: ${event}`);
+    // Set up content height reporting
+    setupHeightReporting(contentSelector: string) {
+        if (typeof window === 'undefined' || !window.ResizeObserver) return;
 
+        this.contentElement = document.querySelector(contentSelector);
+        if (!this.contentElement) {
+            console.warn(`Element not found: ${contentSelector}`);
+            return;
+        }
+
+        // Initialize ResizeObserver to monitor content size changes
+        this.resizeObserver = new ResizeObserver(this.reportContentHeight);
+        this.resizeObserver.observe(this.contentElement);
+
+        // Also send height on load and any time DOM changes
+        window.addEventListener('load', this.reportContentHeight);
+        document.addEventListener('DOMContentLoaded', this.reportContentHeight);
+
+        // Initial report
+        setTimeout(this.reportContentHeight, 500);
+    }
+
+    private reportContentHeight = () => {
+        if (!this.contentElement) {
+            // If no specific element is being monitored, report document height
+            const height = Math.max(
+                document.body.scrollHeight,
+                document.documentElement.scrollHeight,
+                document.body.offsetHeight,
+                document.documentElement.offsetHeight
+            );
+
+            this.sendToParent('RESIZE_IFRAME', { height });
+            return;
+        }
+
+        // Get height of monitored element
+        const height = this.contentElement.scrollHeight;
+        this.sendToParent('RESIZE_IFRAME', { height });
+    }
+
+    on(event: string, callback: (data: any) => void) {
         if (!this.callbacks.has(event)) {
             this.callbacks.set(event, new Set());
         }
@@ -142,7 +178,7 @@ export class ParentBridge {
         }
     }
 
-    sendToParent(type: MessageType, payload: any) {
+    sendToParent(type: string, payload: any) {
         if (typeof window !== 'undefined' && window.parent !== window) {
             window.parent.postMessage({ type, payload }, '*');
         }
@@ -159,7 +195,15 @@ export class ParentBridge {
     cleanup() {
         if (typeof window !== 'undefined') {
             window.removeEventListener('message', this.handleMessage);
+            window.removeEventListener('load', this.reportContentHeight);
+            document.removeEventListener('DOMContentLoaded', this.reportContentHeight);
+
+            if (this.resizeObserver && this.contentElement) {
+                this.resizeObserver.unobserve(this.contentElement);
+                this.resizeObserver.disconnect();
+            }
         }
+
         this.callbacks.clear();
     }
 }

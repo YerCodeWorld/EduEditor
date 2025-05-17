@@ -51,7 +51,9 @@ export function ConnectionTest() {
                     <p><strong>User:</strong> {userData.name}</p>
                     <p><strong>Email:</strong> {userData.email}</p>
                     <p><strong>Role:</strong> {userData.role}</p>
+                    <p><strong>Color:</strong> {userData.preferredColor}</p>  {/*Trust me bro, this is the name*/}
                     <p><strong>Auth Status:</strong> Connected</p>
+
                 </div>
             ) : (
                 <p>Waiting for user data... (Try count: {retryCount + 1})</p>

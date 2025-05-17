@@ -1,25 +1,34 @@
-// src/app/(edit)/_components/EditForm.tsx
+// src/app/(edit)/_components/EditForm.tsx - Update save functionality
+
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import TiptapEditor, { type TiptapEditorRef } from "@/components/TiptapEditor";
-import { getPost, savePost } from "@/services/post";
+import { savePost } from "@/services/post"; // Local storage fallback
 import { parentBridge } from "@/services/parent-bridge";
-import { editorAPI } from "@/services/api"; // Import the API service
+import { editorAPI } from "@/services/api";
 import { ConnectionTest } from "@/components/ConnectionTest";
 
 interface PostForm {
     title: string;
     content: string;
-    // Add other fields as needed
+    published?: boolean;
+    coverImage?: string;
 }
 
 export default function EditForm() {
     const editorRef = useRef<TiptapEditorRef>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveStatus, setSaveStatus] = useState<{
+        message: string;
+        type: 'success' | 'error' | 'info' | null;
+    }>({ message: '', type: null });
     const [editorMode, setEditorMode] = useState<'new' | 'edit' | 'view'>('new');
     const [postData, setPostData] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
-    const { control, reset, watch } = useForm<PostForm>();
+
+    const { control, reset, watch, handleSubmit, formState } = useForm<PostForm>();
+    const formValues = watch();
 
     const getWordCount = useCallback(
         () => editorRef.current?.getInstance()?.storage.characterCount.words() ?? 0,
@@ -30,27 +39,177 @@ export default function EditForm() {
     const fetchPostData = async (slug: string) => {
         try {
             setIsLoading(true);
+            setError(null);
 
             const response = await editorAPI.loadPostBySlug(slug);
 
             if (response.data) {
-                console.log('Post data loaded successfully:', response.data);
+                console.log('Post data loaded successfully');
                 setPostData(response.data);
                 reset({
                     title: response.data.title || '',
-                    content: response.data.content || ''
+                    content: response.data.content || '',
+                    published: response.data.published,
+                    coverImage: response.data.coverImage
                 });
+            } else if (response.error) {
+                setError(`Failed to load post: ${response.error.message}`);
             } else {
                 setError('Failed to load post data');
             }
         } catch (err) {
             setError('Error loading post data');
+            console.error('Error loading post:', err);
         } finally {
             setIsLoading(false);
         }
     };
 
-    // Use this effect to handle URL parameters and set initial state
+    // Handle form submission (manual save)
+    const onSubmit = async (data: PostForm) => {
+        try {
+            setIsSaving(true);
+            setSaveStatus({ message: 'Saving...', type: 'info' });
+
+            // Add word count to the data
+            const submissionData = {
+                ...postData, // Include any existing data like ID
+                ...data,
+                wordCount: getWordCount()
+            };
+
+            console.log('Submitting data:', { ...submissionData, content: '(content truncated)' });
+
+            let response;
+            if (editorMode === 'edit' && postData?.slug) {
+                // Update using the slug endpoint
+                response = await editorAPI.updatePost(postData.slug, submissionData);
+            } else {
+                // Create new post
+                response = await editorAPI.savePost(submissionData);
+            }
+
+            console.log('API response:', response);
+
+            if (response.error) {
+                setSaveStatus({
+                    message: `Save failed: ${response.error.message}`,
+                    type: 'error'
+                });
+            } else {
+                // Update local data with server response
+                if (response.data) {
+                    setPostData(response.data);
+
+                    // If this was a new post that's now saved, switch to edit mode
+                    if (editorMode === 'new') {
+                        setEditorMode('edit');
+                        // Update URL to reflect the edit mode without page reload
+                        const newUrl = `${window.location.pathname}?mode=edit&slug=${response.data.slug}`;
+                        window.history.pushState({ path: newUrl }, '', newUrl);
+                    }
+                }
+
+                // Also save to local storage as fallback
+                savePost({
+                    ...data,
+                    wordCount: getWordCount()
+                });
+
+                setSaveStatus({ message: 'Saved successfully', type: 'success' });
+            }
+        } catch (err) {
+            console.error('Error saving post:', err);
+            setSaveStatus({
+                message: 'Save failed: ' + (err instanceof Error ? err.message : 'Unknown error'),
+                type: 'error'
+            });
+
+            // Fallback to local storage save
+            savePost({
+                ...formValues,
+                wordCount: getWordCount(),
+            });
+            setSaveStatus({
+                message: 'Saved locally only (API unavailable)',
+                type: 'info'
+            });
+        } finally {
+            setIsSaving(false);
+
+            // Clear success status after a delay
+            if (saveStatus.type === 'success') {
+                setTimeout(() => {
+                    setSaveStatus({ message: '', type: null });
+                }, 3000);
+            }
+        }
+    };
+
+    // Auto-save functionality
+    useEffect(() => {
+        // Debounce to avoid too frequent saves
+        const autoSaveTimeout = setTimeout(async () => {
+            if (!isLoading && formValues.title && formValues.content) {
+                try {
+                    // Don't show status for auto-saves to avoid distracting the user
+                    // But still save in the background
+                    const autoSaveData = {
+                        ...postData,
+                        ...formValues,
+                        wordCount: getWordCount()
+                    };
+
+                    // Save to API
+                    let apiResult = false;
+                    if (editorMode === 'edit' && postData?.slug) {
+                        // Update existing post using the slug
+                        const result = await editorAPI.updatePost(postData.slug, autoSaveData);
+                        apiResult = !result.error;
+                    } else if (formValues.title.length > 5) {
+                        // Only auto-save new posts with substantial titles
+                        const result = await editorAPI.savePost(autoSaveData);
+                        apiResult = !result.error;
+
+                        // If new post was saved successfully via API, update to edit mode
+                        if (apiResult && result.data && editorMode === 'new') {
+                            console.log('Auto-save created new post, updating to edit mode');
+                            setPostData(result.data);
+                            setEditorMode('edit');
+
+                            // Update URL if we have a slug
+                            if (result.data.slug) {
+                                const newUrl = `${window.location.pathname}?mode=edit&slug=${result.data.slug}`;
+                                window.history.pushState({ path: newUrl }, '', newUrl);
+                            }
+                        }
+                    }
+
+                    if (!apiResult) {
+                        console.log('API auto-save failed, using local storage fallback');
+                    }
+
+                    // Always save to local storage as fallback
+                    savePost({
+                        ...formValues,
+                        wordCount: getWordCount(),
+                    });
+                } catch (err) {
+                    console.error('Auto-save error:', err);
+
+                    // Save to local storage on error
+                    savePost({
+                        ...formValues,
+                        wordCount: getWordCount(),
+                    });
+                }
+            }
+        }, 5000); // 5 second debounce
+
+        return () => clearTimeout(autoSaveTimeout);
+    }, [formValues, postData, isLoading, editorMode, getWordCount]);
+
+    // Initialize based on URL parameters
     useEffect(() => {
         console.log("EditForm initializing...");
 
@@ -74,7 +233,7 @@ export default function EditForm() {
             setIsLoading(false);
         }
 
-        // Listen for messages from parent (this should run only once)
+        // Listen for messages from parent
         const handleInitData = (data: any) => {
             console.log('Received init data in EditForm:', data);
 
@@ -84,7 +243,9 @@ export default function EditForm() {
                 setPostData(data.post);
                 reset({
                     title: data.post.title || '',
-                    content: data.post.content || ''
+                    content: data.post.content || '',
+                    published: data.post.published,
+                    coverImage: data.post.coverImage
                 });
                 setIsLoading(false);
             } else if (data.mode === 'edit' && data.post === null && urlSlug) {
@@ -111,44 +272,23 @@ export default function EditForm() {
         // Fallback - load mock data if we don't get data from parent in 3 seconds
         const fallbackTimer = setTimeout(() => {
             if (isLoading) {
-                console.log("Fallback: Still loading after timeout, using default content");
+                console.log("Fallback: Still loading after timeout");
 
                 if (urlMode === 'edit' && urlSlug) {
                     // Try one more time to fetch directly
                     console.log("Fallback: Attempting direct fetch one more time");
                     fetchPostData(urlSlug);
                 } else {
-                    // Just use mock data for new posts
-                    getPost().then((post) => {
-                        reset({ ...post });
-                        setIsLoading(false);
-                    });
+                    // Just end loading state
+                    setIsLoading(false);
                 }
             }
         }, 3000);
 
         return () => {
-            // Clean up
             clearTimeout(fallbackTimer);
         };
     }, []); // Empty dependency array to run only once
-
-    useEffect(() => {
-        // Only set up the watch effect when we have the form data loaded
-        if (!isLoading) {
-            const subscription = watch((values, { type }) => {
-                if (type === "change") {
-                    savePost({
-                        ...values,
-                        wordCount: getWordCount(),
-                        ...(postData?.id && { id: postData.id })
-                    });
-                }
-            });
-
-            return () => subscription.unsubscribe();
-        }
-    }, [watch, postData, isLoading]);
 
     if (isLoading) {
         return (
@@ -164,11 +304,11 @@ export default function EditForm() {
                     animation: 'spin 1s linear infinite'
                 }}></div>
                 <style jsx>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                `}</style>
             </div>
         );
     }
@@ -188,81 +328,125 @@ export default function EditForm() {
     }
 
     return (
-        <div className="flex flex-col gap-6">
-            <div className="flex flex-row gap-6 items-center">
-                <ConnectionTest />
+        <div className="editor-container flex flex-col gap-6">
+            <form onSubmit={handleSubmit(onSubmit)}>
+                <div className="flex flex-row gap-4 items-center mb-4">
+                    <div className="px-4 py-2 bg-blue-100 rounded">
+                        Editor Mode: {editorMode}
+                    </div>
 
-                <div className="px-4 py-2 bg-blue-100 rounded">
-                    Editor Mode: {editorMode}
+                    {editorMode === 'edit' && (
+                        <div className="px-4 py-2 bg-green-100 rounded">
+                            Editing: {postData?.title || 'Unknown post'}
+                        </div>
+                    )}
+
+                    {saveStatus.message && (
+                        <div className={`px-4 py-2 rounded ${
+                            saveStatus.type === 'success' ? 'bg-green-100' :
+                                saveStatus.type === 'error' ? 'bg-red-100' : 'bg-blue-100'
+                        }`}>
+                            {saveStatus.message}
+                        </div>
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={isSaving || !formState.isDirty}
+                        className={`ml-auto px-4 py-2 rounded ${
+                            isSaving
+                                ? 'bg-gray-300 cursor-not-allowed'
+                                : 'bg-blue-500 text-white hover:bg-blue-600'
+                        }`}
+                    >
+                        {isSaving ? 'Saving...' : 'Save'}
+                    </button>
                 </div>
 
-                {editorMode === 'edit' && (
-                    <div className="px-4 py-2 bg-green-100 rounded">
-                        Editing: {postData?.title || 'Unknown post'}
-                    </div>
-                )}
+                <div className="mb-4">
+                    <label className="inline-block font-medium dark:text-white mb-2">Your Amazing Title Here</label>
+                    <Controller
+                        control={control}
+                        name="title"
+                        rules={{ required: "Title is required" }}
+                        render={({ field, fieldState }) => (
+                            <div>
+                                <input
+                                    {...field}
+                                    type="text"
+                                    className={`w-full px-4 py-2.5 shadow border ${
+                                        fieldState.error ? 'border-red-500' : 'border-[#d1d9e0]'
+                                    } rounded-md bg-white dark:bg-[#0d1017] dark:text-white dark:border-[#3d444d] outline-none`}
+                                    placeholder="Enter post title..."
+                                />
+                                {fieldState.error && (
+                                    <p className="text-red-500 text-sm mt-1">{fieldState.error.message}</p>
+                                )}
+                            </div>
+                        )}
+                    />
+                </div>
 
-                <button
-                    onClick={() => {
-                        console.log('Debug button clicked');
-                        console.log('Current state:', {
-                            isLoading,
-                            editorMode,
-                            postData,
-                            urlParams: new URLSearchParams(window.location.search).toString()
-                        });
+                <div className="mb-4">
+                    <label className="inline-block font-medium dark:text-white mb-2">Write A Summary</label>
 
-                        // Force fetch if in edit mode with slug
-                        const urlSlug = new URLSearchParams(window.location.search).get('slug');
-                        if (editorMode === 'edit' && urlSlug && !postData) {
-                            console.log('Forcing fetch for slug:', urlSlug);
-                            fetchPostData(urlSlug);
-                        }
-                    }}
-                    className="px-4 py-2 bg-gray-200 rounded"
-                >
-                    Debug
-                </button>
-            </div>
+                    <textarea
 
-            <div>
-                <label className="inline-block font-medium dark:text-white mb-2">Post Title</label>
-                <Controller
-                    control={control}
-                    name="title"
-                    render={({ field }) => (
-                        <input
-                            {...field}
-                            type="text"
-                            className="w-full px-4 py-2.5 shadow border border-[#d1d9e0] rounded-md bg-white dark:bg-[#0d1017] dark:text-white dark:border-[#3d444d] outline-none"
-                            placeholder="Enter post title..."
-                        />
-                    )}
-                />
-            </div>
+                        className={`w-full h-32 shadow border ${
+                            'border-[#d1d9e0]'
+                        } rounded-md bg-white dark:bg-[#0d1017] dark:text-white dark:border-[#3d444d] outline-none`}
+                        placeholder="Write your summary..."
+                    />
+                </div>
 
-            <div>
-                <label className="inline-block font-medium dark:text-white mb-2">Content</label>
-                <Controller
-                    control={control}
-                    name="content"
-                    render={({ field }) => (
-                        <TiptapEditor
-                            ref={editorRef}
-                            ssr={true}
-                            output="html"
-                            placeholder={{
-                                paragraph: "Type your content here...",
-                                imageCaption: "Type caption for image (optional)",
-                            }}
-                            contentMinHeight={256}
-                            contentMaxHeight={640}
-                            onContentChange={field.onChange}
-                            initialContent={field.value}
-                        />
-                    )}
-                />
-            </div>
+                <div className="mt-4">
+                    <Controller
+                        control={control}
+                        name="published"
+                        render={({ field }) => (
+                            <label className="flex items-center gap-2 cursor-pointer m-2">
+                                <input
+                                    type="checkbox"
+                                    checked={field.value}
+                                    onChange={(e) => field.onChange(e.target.checked)}
+                                    className="h-4 w-4"
+                                />
+                                <span className="dark:text-white">Publish this post</span>
+                            </label>
+                        )}
+                    />
+                </div>
+
+                <div>
+                    <label className="inline-block font-medium dark:text-white mb-2">Content</label>
+                    <Controller
+                        control={control}
+                        name="content"
+                        rules={{ required: "Content is required" }}
+                        render={({ field, fieldState }) => (
+                            <div>
+                                <TiptapEditor
+                                    ref={editorRef}
+                                    ssr={true}
+                                    output="html"
+                                    placeholder={{
+                                        paragraph: "Type your content here...",
+                                        imageCaption: "Type caption for image (optional)",
+                                    }}
+                                    contentMinHeight={256}
+                                    contentMaxHeight={640}
+                                    onContentChange={field.onChange}
+                                    initialContent={field.value}
+                                />
+                                {fieldState.error && (
+                                    <p className="text-red-500 text-sm mt-1">{fieldState.error.message}</p>
+                                )}
+                            </div>
+                        )}
+                    />
+                </div>
+
+            </form>
         </div>
     );
 }

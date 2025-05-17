@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 
 import PostHeader from "@/components/shared/PostHeader";
@@ -8,17 +8,40 @@ import PostToc from "@/components/shared/PostToc";
 import PostContent from "@/components/shared/PostContent";
 import PostSharing from "@/components/shared/PostSharing";
 import PostReadingProgress from "@/components/shared/PostReadingProgress";
+import FeedbackBlock from "@/components/FeedbackBlock";
 import TiptapRenderer from "@/components/TiptapRenderer/ClientRenderer";
 
 import { parentBridge } from "@/services/parent-bridge";
 import { editorAPI } from "@/services/api";
-import { getPost } from "@/services/post";  // Fallback mock data
+
+type colors = '#A47BB9' | "#E08D79" | "#5C9EAD" | "#D46BA3" | "#779ECB" | "#8859A3"
+
+export const pageColorMap = {
+    LAVENDER: "#A47BB9",
+    CORAL: "#E08D79",
+    TEAL: "#5C9EAD",
+    WARMPINK: "#D46BA3",
+    BLUE: "#779ECB",
+    PURPLE: "#8859A3"
+};
+
+export function getHexFromPageColor(color: string): string {
+    const entries = Object.entries(pageColorMap);
+    for (const [key, value] of entries) {
+        if (key === color) {
+            console.log(key, value);
+            return value;
+        }
+    }
+    return "#A47BB9"; // Default
+}
 
 export default function PostPage() {
 
     const [post, setPost] = useState<any>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const [color, setColor] = useState<colors>('#E08D79');
 
     const searchParams = useSearchParams();
     const slug = searchParams.get('slug');
@@ -32,43 +55,27 @@ export default function PostPage() {
     }, [post]);
 
     useEffect(() => {
+
+        const unsubscribe = parentBridge.on('userData', (data: any) => {
+            if (data.preferredColor) {
+                const color = data.preferredColor;
+                setColor(getHexFromPageColor(color) as '#A47BB9' | "#E08D79" | "#5C9EAD" | "#D46BA3" | "#779ECB" | "#8859A3");
+            }
+        });
+
         async function loadContent() {
             try {
                 setIsLoading(true);
 
-                // First check for post data from parent iframe communication
-                const handleInitData = (data: any) => {
-                    if (data?.post) {
-                        console.log('Setting post from parent data', data.post);
-                        setPost(data.post);
-                        setIsLoading(false);
-                    } else if (slug) {
-                        // If no post in parent data but we have slug, fetch it from API
-                        loadPostBySlug(slug);
-                    } else {
-                        const post = 'POST NOT FOUND';
-                        setPost(post);
-                        setIsLoading(false);
-                    }
-                };
-
-                // Register listener for parent data
-                const unsubscribe = parentBridge.on('initData', handleInitData);
-
-                // If we already have a slug in the URL, try loading the post
                 if (slug) {
                     await loadPostBySlug(slug);
                 }
 
-                // Signal to parent we're ready to receive data
                 window.parent.postMessage({
                     type: 'VIEWER_READY',
                     payload: { slug }
                 }, '*');
 
-                return () => {
-                    unsubscribe();
-                };
             } catch (error) {
                 console.error('Error in loadContent:', error);
                 setError('Failed to load post content');
@@ -77,6 +84,11 @@ export default function PostPage() {
         }
 
         loadContent().then((message) => {console.log('Done')} );
+
+        return () => {
+            unsubscribe();
+        };
+
     }, [slug]);
 
     async function loadPostBySlug(postSlug: string) {
@@ -96,31 +108,26 @@ export default function PostPage() {
 
     if (isLoading) {
         return (
-            <div className="flex justify-center items-center min-h-screen">
-                <div className="animate-pulse text-xl">Loading post content...</div>
-            </div>
+            <FeedbackBlock mode='loading'/>
         );
     }
 
     if (error) {
         return (
-            <div className="flex justify-center items-center min-h-screen">
-                <div className="text-red-500 text-xl">{error}</div>
-            </div>
+            <FeedbackBlock mode='error'/>
         );
     }
 
     if (!post) {
         return (
-            <div className="flex justify-center items-center min-h-screen">
-                <div className="text-xl">Post Not Found</div>
-            </div>
+            <FeedbackBlock mode='notFound'/>
         );
     }
 
     return (
         <article className="px-6 flex flex-col items-center">
-            <PostReadingProgress />
+
+            <PostReadingProgress color={color}/>
 
             <PostHeader
                 title={post.title}
